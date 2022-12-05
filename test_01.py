@@ -5,7 +5,7 @@ from ddt import ddt, data, unpack
 
 # change this variable to True to disable timeout and enable print
 #DEBUG = True
-DEBUG = False
+DEBUG = True
 
 TIMEOUT = 1 #* 2 # VM warp factor
 

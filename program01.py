@@ -64,85 +64,65 @@ NOTE: do not import or use any other library except images.
 
 import images as imgs
 
-def pos_on_map(x, y, move, game_map):
-  width, length = len(game_map), len(game_map[0])
+def pos_on_map_simple(x, y, move, game_map):
+  length, width = len(game_map), len(game_map[0])
   if move == "N":
-    if y-1 < 0:
-      return game_map[x][length-1], x, length-1
+    if x <= 0:
+      return [game_map[length-1][y], length-1, y]
     else:
-      return [game_map[x][y-1], x, y-1]
+      return [game_map[x-1][y], x-1, y]
   
   if move == "W":
-    if x-1 < 0:
-      return game_map[width-1][y], width-1, y
+    if y <= 0:
+      return [game_map[x][width-1], x, width-1]
     else:
       return [game_map[x][y-1], x, y-1]
 
   if move == "E":
-    if x == width-1:
-      return [game_map[0][y], 0, y]
-    else:
-      return [game_map[x+1][y], x+1, y]
-
-  if move == "S":
-    if y == length-1:
+    if y == width-1:
       return [game_map[x][0], x, 0]
     else:
       return [game_map[x][y+1], x, y+1]
 
-  if move == "SW":
-    if x==0 and y==length-1:
-      return [game_map[width-1][0], width-1, 0]
-    elif x==0:
-      return [game_map[width-1][y-1], width-1, y-1]
-    elif y==width-1:
-      return [game_map[x-1][0], x-1, 0]
+  if move == "S":
+    if x >= length-1:
+      return [game_map[0][y], 0, y]
     else:
-      return [game_map[x-1][y+1], x-1, y+1]
+      return [game_map[x+1][y], x+1, y]
 
-  if move == "NE":
-    if x==width-1 and y==0:
-      return [game_map[0][length-1], 0, length-1]
-    elif y==0:
-      return [game_map[x+1][length-1], width-1, y-1]
-    elif x==width-1:
-      return [game_map[0][y+1], 0, y+1]
-    else:
-      return [game_map[x+1][y-1], x+1, y-1]
-  if move == "NW":
-    if x==0 and y==0:
-      return [game_map[width-1][length-1], width-1, length-1]
-    elif y==0:
-      return [game_map[x-1][length-1], x-1, length-1]
-    elif x==0:
-      return [game_map[0][y-1], 0, y-1]
-    else:
-      return [game_map[x-1][y-1], x-1, y-1]
+def pos_on_map_diagonally(x, y, move, game_map):
+  x, y = pos_on_map_simple(x, y, move[0], game_map)[1], pos_on_map_simple(x, y, move[0], game_map)[2]
+  return pos_on_map_simple(x, y, move[1], game_map)
 
-  if move == "SE":
-    if x==width-1 and y==length-1:
-      return [game_map[0][0], 0, 0]
-    elif x==width-1:
-      return [game_map[0][y-1], 0, y-1]
-    elif y==length-1:
-      return [game_map[x+1][0], x+1, 0]
-    else:
-      return [game_map[x+1][y+1], x+1, y+1]
+
+def pos_on_map(x, y, move, game_map):
+  if len(move) == 1:
+    return pos_on_map_simple(x, y, move, game_map)
+  else:
+    return pos_on_map_diagonally(x, y, move, game_map)
 
 def is_suicide(x, y, move, game_map):
-  if pos_on_map(x, y, move, game_map)[0]==(0, 255, 0):
+  dest, destX, destY = pos_on_map(x, y, move, game_map)
+  if dest == (0, 255, 0):
+    # simple
     return True
+  if move in ["NE","NW","SE","SW"]:
+    # crossover
+    vertical = game_map[destX][y]
+    horizental = game_map[x][destY]
+    return vertical == (0, 255, 0) and horizental == (0, 255, 0)
   return False
+
 
 def is_obstacle(x, y, move, game_map):
   if pos_on_map(x, y, move, game_map)[0] == (255, 0, 0):
     return True 
   return False
 
+
 def game_finished(x, y, move, game_map):
-  if is_suicide(x, y, move, game_map) or is_obstacle(x, y, move, game_map):
-    return True
-  return False
+  return is_suicide(x, y, move, game_map) or is_obstacle(x, y, move, game_map)
+
 
 def eat_orange(x, y, move, game_map):
   if pos_on_map(x, y, move, game_map)[0]==(255, 128, 0):
@@ -151,46 +131,31 @@ def eat_orange(x, y, move, game_map):
 
 
 def generate_snake(start_img: str, position: list[int, int],
-                   commands: str,) -> int:
+                   commands: str, out_img: str) -> int:
     # Write your code here
     snake = []
-    out_img=''
-    x_head, y_head = position
-    x_tail, y_tail = position
+    
+    y, x = position
     size = 1
     game_map = imgs.load(start_img)
-    x, y = position
     game_map[x][y]=(0, 255, 0)
     snake.append((x,y))
-
-    moves_len = len(commands.split(' '))
     i=0
     for move in commands.split(' '):
       if game_finished(x, y, move, game_map):
-        game_map[x][y]=(0, 255, 0)
-        out_img = imgs.save(game_map)
-        return size
+        # game_map[x][y] = (0, 255, 0)
+        imgs.save(game_map, out_img)
+        return len(snake)
       if eat_orange(x, y, move, game_map):
         size += 1
-        x, y = pos_on_map(x, y, move, game_map)[1], pos_on_map(x, y, move, game_map)[2]
+        x, y = pos_on_map(x, y, move, game_map)[1:]
+        snake.append((x,y))
         game_map[x][y] = (0, 255, 0)
-        x_head, y_head = x, y
       else:
-        x, y = pos_on_map(x, y, move, game_map)[1], pos_on_map(x, y, move, game_map)[2]
-        snake.insert(0,(x, y))
-        game_map[snake[-1][0]][snake[-1][1]] = (128, 128, 128)
-        del snake[-1]
-        x_tail, y_tail = snake[-1]
-    print(game_map)
+        x, y = pos_on_map(x, y, move, game_map)[1:]
+        snake.append((x, y))
+        game_map[x][y] = (0, 255, 0)
+        x_tail, y_tail = snake.pop(0)
+        game_map[x_tail][y_tail] = (128, 128, 128)
+    imgs.save(game_map, out_img)
     return size
-
-data= {"input": {"start_img": "./data/input_00.png", "position": [12, 13], "commands": "S W S W W W S W W N N W N N N N N W N", "out_img": "./output/output_end_00.png"}, "expected": ["./data/expected_end_00.png", 5]}
-
-print(generate_snake("data/input_00.png", data["input"]["position"], data["input"]["commands"]))
-
-
-
-
-
-
-
